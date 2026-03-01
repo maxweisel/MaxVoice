@@ -147,6 +147,9 @@ final class AppState: HotkeyMonitorDelegate, SpeechTranscriberDelegate {
 
         isRecording = false
 
+        // Play stop sound immediately
+        SoundPlayer.playStop()
+
         // Stop recording (this sends end-of-stream to transcriber)
         audioRecorder?.stopRecording()
 
@@ -210,9 +213,7 @@ final class AppState: HotkeyMonitorDelegate, SpeechTranscriberDelegate {
             result = replacer.apply(replacements: replacements, to: result)
         }
 
-        // Play stop sound and paste
-        debugLog("AppState: Playing stop sound")
-        SoundPlayer.playStop()
+        // Dismiss overlay and paste
         debugLog("AppState: Dismissing overlay")
         overlay.dismiss()
 

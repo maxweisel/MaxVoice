@@ -7,24 +7,30 @@ final class SoundPlayer {
 
     /// Sound played when recording starts
     static let startSound: NSSound? = {
-        let path = "/System/Library/PrivateFrameworks/ToneLibrary.framework/Versions/A/Resources/AlertTones/Text-Message-Acknowledgement-ThumbsUp.caf"
-        let sound = NSSound(contentsOfFile: path, byReference: true)
+        guard let url = Bundle.module.url(forResource: "start", withExtension: "caf") else {
+            logger.warning("Failed to find start.caf in bundle")
+            return nil
+        }
+        let sound = NSSound(contentsOf: url, byReference: false)
         if sound == nil {
-            logger.warning("Failed to load start sound from: \(path)")
+            logger.warning("Failed to load start sound from bundle")
         } else {
-            logger.debug("Start sound loaded")
+            logger.debug("Start sound loaded from bundle")
         }
         return sound
     }()
 
     /// Sound played when recording stops
     static let stopSound: NSSound? = {
-        let path = "/System/Library/PrivateFrameworks/ToneLibrary.framework/Versions/A/Resources/AlertTones/Text-Message-Acknowledgement-ThumbsDown.caf"
-        let sound = NSSound(contentsOfFile: path, byReference: true)
+        guard let url = Bundle.module.url(forResource: "stop", withExtension: "caf") else {
+            logger.warning("Failed to find stop.caf in bundle")
+            return nil
+        }
+        let sound = NSSound(contentsOf: url, byReference: false)
         if sound == nil {
-            logger.warning("Failed to load stop sound from: \(path)")
+            logger.warning("Failed to load stop sound from bundle")
         } else {
-            logger.debug("Stop sound loaded")
+            logger.debug("Stop sound loaded from bundle")
         }
         return sound
     }()

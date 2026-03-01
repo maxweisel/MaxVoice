@@ -16,7 +16,11 @@ let package = Package(
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),
             ],
             path: "MaxVoice",
-            exclude: ["Info.plist"]
+            exclude: ["Info.plist", "MaxVoice.entitlements"],
+            resources: [
+                .copy("Resources/start.caf"),
+                .copy("Resources/stop.caf"),
+            ]
         ),
     ]
 )

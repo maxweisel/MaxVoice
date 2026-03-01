@@ -73,9 +73,11 @@ final class TranscriptionOverlay {
         panel.orderFrontRegardless()
         debugLog("Overlay panel shown at \(panel.frame)")
 
-        // Start cursor-following timer (no async dispatch needed - timer fires on main thread)
+        // Start cursor-following timer
         cursorTimer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] _ in
-            self?.positionAtCursor()
+            Task { @MainActor in
+                self?.positionAtCursor()
+            }
         }
         RunLoop.main.add(cursorTimer!, forMode: .common)
     }

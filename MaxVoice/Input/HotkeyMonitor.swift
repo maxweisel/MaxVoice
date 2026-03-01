@@ -81,20 +81,24 @@ final class HotkeyMonitor {
         logger.info("Hotkey monitoring stopped")
     }
 
+    /// Key codes for left/right command keys
+    private let rightCommandKeyCode: UInt16 = 0x36  // 54
+    private let leftCommandKeyCode: UInt16 = 0x37   // 55
+
     /// Handle modifier key changes
     private func handleFlagsChanged(_ event: NSEvent) {
+        // Only respond to right CMD key
+        let isRightCmd = event.keyCode == rightCommandKeyCode
         let cmdPressed = event.modifierFlags.contains(.command)
-        debugLog("handleFlagsChanged: cmdPressed=\(cmdPressed) isCommandPressed=\(isCommandPressed)")
 
-        // Only fire on press transition (toggle mode - ignore release)
-        if cmdPressed && !isCommandPressed {
-            // CMD key pressed - fire toggle
-            debugLog("CMD key pressed - toggling")
+        // Only fire on right CMD press transition
+        if isRightCmd && cmdPressed && !isCommandPressed {
+            debugLog("Right CMD pressed - toggling")
             isCommandPressed = true
             delegate?.onHotkeyToggle()
         } else if !cmdPressed && isCommandPressed {
-            // CMD key released - just update state, don't fire callback
-            debugLog("CMD key released")
+            // CMD released - update state
+            debugLog("CMD released")
             isCommandPressed = false
         }
     }

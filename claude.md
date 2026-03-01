@@ -1,29 +1,41 @@
 # MaxVoice Project Guidelines
 
-## CRITICAL REQUIREMENTS
+## CRITICAL REQUIREMENTS - READ CAREFULLY
 
-1. **ONLY use Google Cloud APIs** - Do NOT use Apple's SFSpeechRecognizer or any other speech recognition service. Use Google Cloud Speech-to-Text exclusively.
+### MANDATORY: Google Cloud Speech-to-Text V2 API ONLY
 
-2. **Match the Python implementation** - This is a port of the Python voice-input-assistant. Follow the same architecture and API usage patterns as the original Python version.
+1. **USE ONLY Google Cloud Speech-to-Text V2 API** - This is non-negotiable.
+   - Use `google.cloud.speech.v2` protos and gRPC client
+   - Use `StreamingRecognize` for real-time transcription
+   - Use Chirp model (`model: "chirp"` or `"chirp_2"` or `"chirp_3"`)
+   - Project ID: `claude-code-voice-assistant`
 
-3. **Google Speech-to-Text API** - Currently uses the REST `speech:recognize` API with interim updates. True gRPC bidirectional streaming would require additional proto generation.
+2. **DO NOT USE ANY OF THESE:**
+   - ❌ Google Cloud Speech-to-Text V1 API (`google.cloud.speech.v1`) - NEVER
+   - ❌ Apple SFSpeechRecognizer - NEVER
+   - ❌ Any other speech recognition service - NEVER
+   - ❌ REST API for streaming - use gRPC only
+
+3. **Authentication:** API key via `x-goog-api-key` gRPC metadata header
+
+### Why V2 Only?
+- Chirp models (best quality) are ONLY available in V2
+- V2 is the modern API with better features
+- The user has explicitly requested V2 multiple times
 
 ## Current Implementation Status
 
-**Implemented:**
-- CMD key hotkey detection (hold to record, release to stop)
+**gRPC Bidirectional Streaming (Implemented):** Uses true gRPC streaming with V2 API. Audio is streamed continuously to Google Speech-to-Text and results arrive in real-time.
+
+**Build:** `swift build -c release` (uses SPM with grpc-swift)
+
+**Key Components:**
+- Right CMD key toggle (not hold-to-talk)
 - Audio recording via AVAudioEngine (16kHz mono LINEAR16)
-- Stereo-to-mono downmix with AVAudioMixerNode (Parallels VM support)
-- Google Speech-to-Text transcription (REST API with interim updates)
-- Live transcription overlay near cursor
+- Live transcription overlay at cursor
 - Gemini post-processing (optional)
-- Regex word replacements
-- Clipboard swap + Cmd+V paste
-- Microphone permission handling
-- Accessibility permission handling with smart restart
-- Launch agent for auto-start
-- System sounds for feedback (start/stop/error)
-- Comprehensive logging via os.log
+- Word replacements
+- Clipboard paste via Cmd+V simulation
 
 **Build:**
 ```bash

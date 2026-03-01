@@ -10,7 +10,7 @@ final class AppState: HotkeyMonitorDelegate, SpeechTranscriberDelegate {
     private let configManager = ConfigManager.shared
     private var config: Config?
     private var audioRecorder: AudioRecorder?
-    private var transcriber: SpeechTranscriber?
+    private var transcriber: GRPCStreamingTranscriber?
     private var postProcessor: GeminiPostProcessor?
     private let replacer = TextReplacer()
     private let hotkeyMonitor = HotkeyMonitor()
@@ -40,7 +40,7 @@ final class AppState: HotkeyMonitorDelegate, SpeechTranscriberDelegate {
 
         // Initialize services
         audioRecorder = AudioRecorder()
-        transcriber = SpeechTranscriber(apiKey: config.googleApiKey, language: config.language)
+        transcriber = GRPCStreamingTranscriber(apiKey: config.googleApiKey, language: config.language)
         transcriber?.delegate = self
 
         if !config.googleApiKey.isEmpty {

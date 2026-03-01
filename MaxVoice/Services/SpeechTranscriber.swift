@@ -21,9 +21,8 @@ final class SpeechTranscriber {
     private var streamTask: Task<Void, Never>?
     private var accumulatedTranscript = ""
 
-    /// Google Speech-to-Text streaming endpoint
-    private let apiEndpoint = "https://speech.googleapis.com/v1/speech:recognize"
-    private let streamingEndpoint = "https://speech.googleapis.com/v1/speech:streamingRecognize"
+    /// Google Speech-to-Text V2 API endpoint
+    private let apiEndpoint = "https://speech.googleapis.com/v2/projects/-/locations/global/recognizers/_:recognize"
 
     init(apiKey: String, language: String = "en-US") {
         self.apiKey = apiKey
@@ -133,18 +132,23 @@ final class SpeechTranscriber {
 
         let base64Audio = audioData.base64EncodedString()
 
+        // V2 API request format
         let requestBody: [String: Any] = [
             "config": [
-                "encoding": "LINEAR16",
-                "sampleRateHertz": 16000,
-                "languageCode": language,
-                "model": "latest_long",
-                "useEnhanced": true,
-                "enableAutomaticPunctuation": true
+                "explicitDecodingConfig": [
+                    "encoding": "LINEAR16",
+                    "sampleRateHertz": 16000,
+                    "audioChannelCount": 1
+                ],
+                "languageCodes": [language],
+                "model": "short",
+                "features": [
+                    "enableAutomaticPunctuation": true,
+                    "enableSpokenPunctuation": true,
+                    "enableSpokenEmojis": true
+                ]
             ],
-            "audio": [
-                "content": base64Audio
-            ]
+            "content": base64Audio
         ]
 
         guard let url = URL(string: "\(apiEndpoint)?key=\(apiKey)") else {

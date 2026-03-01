@@ -98,7 +98,7 @@ final class GRPCStreamingTranscriber: @unchecked Sendable {
 
             // Send initial config request
             var configRequest = Google_Cloud_Speech_V2_StreamingRecognizeRequest()
-            // Chirp 3 - northamerica-northeast1 (Montreal) is closest to NYC
+            // chirp_3 in Montreal (closest to NYC)
             configRequest.recognizer = "projects/\(projectId)/locations/northamerica-northeast1/recognizers/_"
             debugLog("GRPCStreamingTranscriber: Using recognizer: \(configRequest.recognizer)")
 
@@ -120,6 +120,7 @@ final class GRPCStreamingTranscriber: @unchecked Sendable {
 
             streamingConfig.config = recognitionConfig
             streamingConfig.streamingFeatures.interimResults = true
+            streamingConfig.streamingFeatures.enableVoiceActivityEvents = true
 
             configRequest.streamingConfig = streamingConfig
 
@@ -170,10 +171,13 @@ final class GRPCStreamingTranscriber: @unchecked Sendable {
 
         do {
             for try await response in stream.responseStream {
+                debugLog("GRPCStreamingTranscriber: Got response with \(response.results.count) results")
+
                 for result in response.results {
                     guard let alternative = result.alternatives.first else { continue }
 
                     let transcript = alternative.transcript
+                    debugLog("GRPCStreamingTranscriber: Result isFinal=\(result.isFinal), transcript=\(transcript)")
 
                     if result.isFinal {
                         finalTranscript += transcript
@@ -187,13 +191,11 @@ final class GRPCStreamingTranscriber: @unchecked Sendable {
                 }
             }
 
-            // Send final result
-            if !finalTranscript.isEmpty {
-                let result = finalTranscript
-                debugLog("GRPCStreamingTranscriber: Complete transcript: \(result)")
-                await MainActor.run { [weak self] in
-                    self?.delegate?.onFinalResult(result)
-                }
+            // Send final result (even if empty, to dismiss the HUD)
+            let result = finalTranscript
+            debugLog("GRPCStreamingTranscriber: Complete transcript: \(result.isEmpty ? "(empty)" : result)")
+            await MainActor.run { [weak self] in
+                self?.delegate?.onFinalResult(result)
             }
 
         } catch {
@@ -216,7 +218,7 @@ final class GRPCStreamingTranscriber: @unchecked Sendable {
             throw GRPCError.setupFailed
         }
 
-        // Chirp 3 - northamerica-northeast1 (Montreal) endpoint
+        // chirp_3 in Montreal (closest to NYC)
         channel = try GRPCChannelPool.with(
             target: .host("northamerica-northeast1-speech.googleapis.com", port: 443),
             transportSecurity: .tls(GRPCTLSConfiguration.makeClientDefault(compatibleWith: group)),

@@ -145,7 +145,7 @@ func testRecognize(token: String) throws {
                 "audioChannelCount": 1
             ],
             "languageCodes": ["en-US"],
-            "model": "chirp_3",
+            "model": "chirp_2",
             "features": [
                 "enableAutomaticPunctuation": true
             ]
@@ -153,8 +153,8 @@ func testRecognize(token: String) throws {
         "content": audio.base64EncodedString()
     ]
 
-    // northamerica-northeast1 (Montreal) - closest to NYC
-    let location = "northamerica-northeast1"
+    // Test us-central1 (Iowa)
+    let location = "us-central1"
     let url = URL(string: "https://\(location)-speech.googleapis.com/v2/projects/\(projectId)/locations/\(location)/recognizers/_:recognize")!
     var request = URLRequest(url: url)
     request.httpMethod = "POST"

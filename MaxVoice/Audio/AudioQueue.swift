@@ -33,6 +33,11 @@ final class AudioQueue {
     func pop() -> Data? {
         semaphore.wait()
         lock.lock()
+        // Safety check in case queue was cleared between semaphore signal and now
+        guard !queue.isEmpty else {
+            lock.unlock()
+            return nil
+        }
         let data = queue.removeFirst()
         lock.unlock()
         return data
@@ -61,6 +66,11 @@ final class AudioQueue {
         totalBytesQueued = 0
         chunkCount = 0
         lock.unlock()
+
+        // Drain the semaphore to match the now-empty queue
+        for _ in 0..<count {
+            _ = semaphore.wait(timeout: .now())
+        }
 
         logger.info("AudioQueue: cleared \(count) items")
     }

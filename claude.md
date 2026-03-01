@@ -27,8 +27,6 @@
 
 **gRPC Bidirectional Streaming (Implemented):** Uses true gRPC streaming with V2 API. Audio is streamed continuously to Google Speech-to-Text and results arrive in real-time.
 
-**Build:** `swift build -c release` (uses SPM with grpc-swift)
-
 **Key Components:**
 - Right CMD key toggle (not hold-to-talk)
 - Audio recording via AVAudioEngine (16kHz mono LINEAR16)
@@ -37,18 +35,35 @@
 - Word replacements
 - Clipboard paste via Cmd+V simulation
 
-**Build:**
+## Build Instructions
+
+Uses Swift Package Manager (NOT Xcode build):
+
 ```bash
-make build      # Debug build
-make release    # Release build
-make install    # Install to /Applications with launch agent
-make run        # Build and run debug
-make logs       # View logs
+# Build release
+swift build -c release
+
+# Create app bundle
+rm -rf MaxVoice.app
+mkdir -p MaxVoice.app/Contents/MacOS
+cp .build/release/MaxVoice MaxVoice.app/Contents/MacOS/
+cp MaxVoice/Info.plist MaxVoice.app/Contents/
+
+# Sign the app (required for Accessibility permissions)
+codesign -s - -f --deep MaxVoice.app
+
+# Run the app
+open MaxVoice.app
 ```
+
+**Important:** After rebuilding, you may need to re-add the app to Accessibility permissions:
+1. System Settings → Privacy & Security → Accessibility
+2. Remove old MaxVoice entry
+3. Add the new MaxVoice.app
 
 ## Architecture
 
-- Xcode project (MaxVoice.xcodeproj)
+- Swift Package Manager project (Package.swift)
 - NSEvent.addGlobalMonitorForEvents for hotkey detection
 - AVAudioEngine + AVAudioMixerNode for audio capture
 - NSSound for audio feedback
@@ -81,7 +96,6 @@ User config lives at `~/.maxvoice/config.json`:
 
 View logs with:
 ```bash
-make logs           # Recent logs
-make logs-follow    # Real-time stream
-log show --predicate 'subsystem == "com.maxweisel.maxvoice"' --last 1h
+log show --predicate 'subsystem == "com.maxweisel.maxvoice"' --last 5m
+log stream --predicate 'subsystem == "com.maxweisel.maxvoice"'  # Real-time
 ```

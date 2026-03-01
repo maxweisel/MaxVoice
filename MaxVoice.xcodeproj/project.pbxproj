@@ -1,0 +1,434 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A1000001234567890000001 /* MaxVoiceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100001234567890000001 /* MaxVoiceApp.swift */; };
+		A1000002234567890000002 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100002234567890000002 /* AppState.swift */; };
+		A1000003234567890000003 /* SoundPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100003234567890000003 /* SoundPlayer.swift */; };
+		A1000004234567890000004 /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100004234567890000004 /* AudioRecorder.swift */; };
+		A1000005234567890000005 /* AudioQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100005234567890000005 /* AudioQueue.swift */; };
+		A1000006234567890000006 /* SpeechTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100006234567890000006 /* SpeechTranscriber.swift */; };
+		A1000007234567890000007 /* GeminiPostProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100007234567890000007 /* GeminiPostProcessor.swift */; };
+		A1000008234567890000008 /* TextReplacer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100008234567890000008 /* TextReplacer.swift */; };
+		A1000009234567890000009 /* HotkeyMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100009234567890000009 /* HotkeyMonitor.swift */; };
+		A1000010234567890000010 /* ClipboardPaster.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100010234567890000010 /* ClipboardPaster.swift */; };
+		A1000011234567890000011 /* TranscriptionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100011234567890000011 /* TranscriptionOverlay.swift */; };
+		A1000012234567890000012 /* OverlayContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100012234567890000012 /* OverlayContent.swift */; };
+		A1000013234567890000013 /* OverlayState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100013234567890000013 /* OverlayState.swift */; };
+		A1000014234567890000014 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100014234567890000014 /* Config.swift */; };
+		A1000015234567890000015 /* ConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100015234567890000015 /* ConfigManager.swift */; };
+		A1000016234567890000016 /* AccessibilityChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100016234567890000016 /* AccessibilityChecker.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A1200001234567890000001 /* MaxVoice.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MaxVoice.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1100001234567890000001 /* MaxVoiceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaxVoiceApp.swift; sourceTree = "<group>"; };
+		A1100002234567890000002 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		A1100003234567890000003 /* SoundPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundPlayer.swift; sourceTree = "<group>"; };
+		A1100004234567890000004 /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
+		A1100005234567890000005 /* AudioQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioQueue.swift; sourceTree = "<group>"; };
+		A1100006234567890000006 /* SpeechTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechTranscriber.swift; sourceTree = "<group>"; };
+		A1100007234567890000007 /* GeminiPostProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiPostProcessor.swift; sourceTree = "<group>"; };
+		A1100008234567890000008 /* TextReplacer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextReplacer.swift; sourceTree = "<group>"; };
+		A1100009234567890000009 /* HotkeyMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyMonitor.swift; sourceTree = "<group>"; };
+		A1100010234567890000010 /* ClipboardPaster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardPaster.swift; sourceTree = "<group>"; };
+		A1100011234567890000011 /* TranscriptionOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionOverlay.swift; sourceTree = "<group>"; };
+		A1100012234567890000012 /* OverlayContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayContent.swift; sourceTree = "<group>"; };
+		A1100013234567890000013 /* OverlayState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayState.swift; sourceTree = "<group>"; };
+		A1100014234567890000014 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		A1100015234567890000015 /* ConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigManager.swift; sourceTree = "<group>"; };
+		A1100016234567890000016 /* AccessibilityChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityChecker.swift; sourceTree = "<group>"; };
+		A1100017234567890000017 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A1300001234567890000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A1400001234567890000001 = {
+			isa = PBXGroup;
+			children = (
+				A1400002234567890000002 /* MaxVoice */,
+				A1400003234567890000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A1400002234567890000002 /* MaxVoice */ = {
+			isa = PBXGroup;
+			children = (
+				A1400004234567890000004 /* App */,
+				A1400005234567890000005 /* Audio */,
+				A1400006234567890000006 /* Services */,
+				A1400007234567890000007 /* Input */,
+				A1400008234567890000008 /* UI */,
+				A1400009234567890000009 /* Config */,
+				A1400010234567890000010 /* Accessibility */,
+				A1100017234567890000017 /* Info.plist */,
+			);
+			path = MaxVoice;
+			sourceTree = "<group>";
+		};
+		A1400003234567890000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A1200001234567890000001 /* MaxVoice.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A1400004234567890000004 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A1100001234567890000001 /* MaxVoiceApp.swift */,
+				A1100002234567890000002 /* AppState.swift */,
+				A1100003234567890000003 /* SoundPlayer.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		A1400005234567890000005 /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				A1100004234567890000004 /* AudioRecorder.swift */,
+				A1100005234567890000005 /* AudioQueue.swift */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		A1400006234567890000006 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A1100006234567890000006 /* SpeechTranscriber.swift */,
+				A1100007234567890000007 /* GeminiPostProcessor.swift */,
+				A1100008234567890000008 /* TextReplacer.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A1400007234567890000007 /* Input */ = {
+			isa = PBXGroup;
+			children = (
+				A1100009234567890000009 /* HotkeyMonitor.swift */,
+				A1100010234567890000010 /* ClipboardPaster.swift */,
+			);
+			path = Input;
+			sourceTree = "<group>";
+		};
+		A1400008234567890000008 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				A1100011234567890000011 /* TranscriptionOverlay.swift */,
+				A1100012234567890000012 /* OverlayContent.swift */,
+				A1100013234567890000013 /* OverlayState.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		A1400009234567890000009 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				A1100014234567890000014 /* Config.swift */,
+				A1100015234567890000015 /* ConfigManager.swift */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		A1400010234567890000010 /* Accessibility */ = {
+			isa = PBXGroup;
+			children = (
+				A1100016234567890000016 /* AccessibilityChecker.swift */,
+			);
+			path = Accessibility;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A1500001234567890000001 /* MaxVoice */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1700001234567890000001 /* Build configuration list for PBXNativeTarget "MaxVoice" */;
+			buildPhases = (
+				A1600001234567890000001 /* Sources */,
+				A1300001234567890000001 /* Frameworks */,
+				A1600002234567890000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MaxVoice;
+			productName = MaxVoice;
+			productReference = A1200001234567890000001 /* MaxVoice.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A1800001234567890000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					A1500001234567890000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = A1700002234567890000002 /* Build configuration list for PBXProject "MaxVoice" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A1400001234567890000001;
+			productRefGroup = A1400003234567890000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A1500001234567890000001 /* MaxVoice */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A1600002234567890000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A1600001234567890000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000001234567890000001 /* MaxVoiceApp.swift in Sources */,
+				A1000002234567890000002 /* AppState.swift in Sources */,
+				A1000003234567890000003 /* SoundPlayer.swift in Sources */,
+				A1000004234567890000004 /* AudioRecorder.swift in Sources */,
+				A1000005234567890000005 /* AudioQueue.swift in Sources */,
+				A1000006234567890000006 /* SpeechTranscriber.swift in Sources */,
+				A1000007234567890000007 /* GeminiPostProcessor.swift in Sources */,
+				A1000008234567890000008 /* TextReplacer.swift in Sources */,
+				A1000009234567890000009 /* HotkeyMonitor.swift in Sources */,
+				A1000010234567890000010 /* ClipboardPaster.swift in Sources */,
+				A1000011234567890000011 /* TranscriptionOverlay.swift in Sources */,
+				A1000012234567890000012 /* OverlayContent.swift in Sources */,
+				A1000013234567890000013 /* OverlayState.swift in Sources */,
+				A1000014234567890000014 /* Config.swift in Sources */,
+				A1000015234567890000015 /* ConfigManager.swift in Sources */,
+				A1000016234567890000016 /* AccessibilityChecker.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A1900001234567890000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A1900002234567890000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		A1900003234567890000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MaxVoice/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "MaxVoice needs microphone access for speech recognition.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.maxweisel.maxvoice;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A1900004234567890000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MaxVoice/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "MaxVoice needs microphone access for speech recognition.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.maxweisel.maxvoice;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A1700001234567890000001 /* Build configuration list for PBXNativeTarget "MaxVoice" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1900003234567890000003 /* Debug */,
+				A1900004234567890000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1700002234567890000002 /* Build configuration list for PBXProject "MaxVoice" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1900001234567890000001 /* Debug */,
+				A1900002234567890000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A1800001234567890000001 /* Project object */;
+}

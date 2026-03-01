@@ -6,7 +6,6 @@ final class AudioRecorder {
     private let logger = Logger(subsystem: "com.maxweisel.maxvoice", category: "AudioRecorder")
 
     private let audioEngine = AVAudioEngine()
-    private let mixerNode = AVAudioMixerNode()
     private let audioQueue = AudioQueue()
 
     private var isRecording = false
@@ -22,83 +21,95 @@ final class AudioRecorder {
 
     /// Request microphone permission
     func requestPermission() async -> Bool {
-        logger.info("Requesting microphone permission")
+        debugLog("AudioRecorder.requestPermission called")
 
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
-        logger.info("Current microphone authorization status: \(String(describing: status.rawValue))")
+        debugLog("Current microphone authorization status: \(status.rawValue)")
 
         switch status {
         case .authorized:
-            logger.info("Microphone already authorized")
+            debugLog("Microphone already authorized")
             return true
         case .notDetermined:
-            logger.info("Microphone permission not determined, requesting...")
+            debugLog("Microphone permission not determined, requesting...")
             let granted = await AVCaptureDevice.requestAccess(for: .audio)
-            logger.info("Microphone permission \(granted ? "granted" : "denied")")
+            debugLog("Microphone permission \(granted ? "granted" : "denied")")
             return granted
         case .denied, .restricted:
-            logger.warning("Microphone permission denied or restricted")
+            debugLog("Microphone permission denied or restricted")
             return false
         @unknown default:
-            logger.error("Unknown microphone authorization status")
+            debugLog("Unknown microphone authorization status")
             return false
         }
     }
 
-    /// Set up the audio pipeline with stereo-to-mono conversion
+    /// Set up the audio pipeline - tap input directly and convert
     private func setupAudioPipeline() throws {
-        logger.info("Setting up audio pipeline")
+        debugLog("Setting up audio pipeline")
 
         let inputNode = audioEngine.inputNode
         let inputFormat = inputNode.outputFormat(forBus: 0)
 
-        logger.info("Input device format - sample rate: \(inputFormat.sampleRate), channels: \(inputFormat.channelCount)")
+        debugLog("Input device format - sample rate: \(inputFormat.sampleRate), channels: \(inputFormat.channelCount)")
 
-        // Create target format: 16kHz mono Float32
-        guard let monoFormat = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32,
-            sampleRate: targetSampleRate,
-            channels: targetChannels,
-            interleaved: false
-        ) else {
-            logger.error("Failed to create target audio format")
-            throw AudioRecorderError.formatCreationFailed
+        // Store input format for conversion
+        self.inputSampleRate = inputFormat.sampleRate
+        self.inputChannels = Int(inputFormat.channelCount)
+
+        // Install tap directly on input node with native format
+        let bufferSize: AVAudioFrameCount = 4096
+
+        inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) { [weak self] buffer, time in
+            self?.processInputBuffer(buffer)
         }
 
-        logger.info("Target format - sample rate: \(monoFormat.sampleRate), channels: \(monoFormat.channelCount)")
-
-        // Attach mixer node for stereo→mono conversion with proper gain
-        audioEngine.attach(mixerNode)
-        logger.debug("Mixer node attached")
-
-        // Connect input → mixer (handles channel conversion and sample rate)
-        audioEngine.connect(inputNode, to: mixerNode, format: inputFormat)
-        logger.debug("Input node connected to mixer")
-
-        // Install tap on mixer output to capture audio
-        let bufferSize: AVAudioFrameCount = 1024  // ~64ms at 16kHz
-
-        mixerNode.installTap(onBus: 0, bufferSize: bufferSize, format: monoFormat) { [weak self] buffer, time in
-            self?.processAudioBuffer(buffer)
-        }
-
-        logger.info("Audio tap installed with buffer size: \(bufferSize)")
+        debugLog("Audio tap installed on input node with buffer size: \(bufferSize)")
     }
 
-    /// Process incoming audio buffer and convert to LINEAR16
-    private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
-        guard let channelData = buffer.floatChannelData?[0] else {
-            logger.warning("No channel data in audio buffer")
+    private var inputSampleRate: Double = 48000
+    private var inputChannels: Int = 2
+
+    /// Process input buffer - convert from native format to 16kHz mono LINEAR16
+    private func processInputBuffer(_ buffer: AVAudioPCMBuffer) {
+        guard let channelData = buffer.floatChannelData else {
+            debugLog("AudioRecorder: No channel data in audio buffer")
             return
         }
 
         let frameCount = Int(buffer.frameLength)
         guard frameCount > 0 else { return }
 
-        // Convert Float32 [-1.0, 1.0] to Int16 [-32768, 32767]
-        var int16Data = [Int16](repeating: 0, count: frameCount)
-        for i in 0..<frameCount {
-            let sample = max(-1.0, min(1.0, channelData[i]))  // Clamp to prevent overflow
+        // Calculate decimation factor (e.g., 48000 / 16000 = 3)
+        let decimationFactor = Int(inputSampleRate / targetSampleRate)
+        let outputFrameCount = frameCount / decimationFactor
+
+        // Log audio level periodically
+        var maxSample: Float = 0
+        for i in 0..<min(frameCount, 100) {
+            maxSample = max(maxSample, abs(channelData[0][i]))
+        }
+
+        bufferCount += 1
+        if bufferCount == 1 || bufferCount % 50 == 0 {
+            debugLog("AudioRecorder: Buffer \(bufferCount), frames=\(frameCount), outputFrames=\(outputFrameCount), maxSample=\(maxSample)")
+        }
+
+        // Convert to mono and downsample
+        var int16Data = [Int16](repeating: 0, count: outputFrameCount)
+
+        for i in 0..<outputFrameCount {
+            let srcIndex = i * decimationFactor
+
+            // Mix channels to mono
+            var sample: Float = 0
+            for ch in 0..<inputChannels {
+                sample += channelData[ch][srcIndex]
+            }
+            sample /= Float(inputChannels)
+
+            // Clamp and convert to Int16
+            sample = max(-1.0, min(1.0, sample))
             int16Data[i] = Int16(sample * 32767.0)
         }
 
@@ -110,15 +121,18 @@ final class AudioRecorder {
         audioQueue.push(data)
     }
 
+    private var bufferCount = 0
+
     /// Start recording audio
     func startRecording() throws {
         guard !isRecording else {
-            logger.warning("Already recording, ignoring start request")
+            debugLog("AudioRecorder: Already recording, ignoring start request")
             return
         }
 
-        logger.info("Starting audio recording")
+        debugLog("AudioRecorder: Starting audio recording")
         recordingStartTime = Date()
+        bufferCount = 0
 
         // Clear any leftover data
         audioQueue.clear()
@@ -140,29 +154,28 @@ final class AudioRecorder {
     /// Stop recording and signal end of stream
     func stopRecording() {
         guard isRecording else {
-            logger.warning("Not recording, ignoring stop request")
+            debugLog("AudioRecorder: Not recording, ignoring stop request")
             return
         }
 
-        logger.info("Stopping audio recording")
+        debugLog("AudioRecorder: Stopping audio recording")
 
         // Calculate recording duration
         if let startTime = recordingStartTime {
             let duration = Date().timeIntervalSince(startTime)
-            logger.info("Recording duration: \(String(format: "%.2f", duration)) seconds")
+            debugLog("AudioRecorder: Recording duration: \(String(format: "%.2f", duration)) seconds")
         }
 
-        // Stop the engine
+        // Stop the engine and remove tap
+        audioEngine.inputNode.removeTap(onBus: 0)
         audioEngine.stop()
-        mixerNode.removeTap(onBus: 0)
-        audioEngine.detach(mixerNode)
 
         isRecording = false
 
         // Push end-of-stream sentinel
         audioQueue.push(nil)
 
-        logger.info("Audio recording stopped")
+        debugLog("AudioRecorder: Audio recording stopped")
     }
 
     /// Get next audio chunk (blocking)

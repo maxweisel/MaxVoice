@@ -1,171 +1,150 @@
-import Cocoa
-import SwiftUI
-import os.log
+import AppKit
 
-/// Floating overlay window that displays live transcription near the cursor
+/// Non-activating panel that never steals focus from the current app
+private class OverlayPanel: NSPanel {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+}
+
+/// Floating overlay that displays live transcription near the cursor
+@MainActor
 final class TranscriptionOverlay {
-    private let logger = Logger(subsystem: "com.maxweisel.maxvoice", category: "TranscriptionOverlay")
+    private var panel: OverlayPanel?
+    private var textField: NSTextField?
+    private var cursorTimer: Timer?
 
-    private var window: NSWindow?
-    private let state = OverlayState()
+    /// Show the overlay at the current cursor position
+    func showAtCursor() {
+        debugLog("TranscriptionOverlay.showAtCursor called")
 
-    /// Offset from cursor position
-    private let cursorOffset: CGFloat = 24
+        // Dismiss any existing overlay first
+        dismiss()
 
-    /// Auto-hide timer for error messages
-    private var hideTimer: Timer?
+        // Create text field
+        let textField = NSTextField(labelWithString: "Listening...")
+        textField.font = NSFont.systemFont(ofSize: 14, weight: .medium)
+        textField.textColor = .white
+        textField.backgroundColor = .clear
+        textField.isBezeled = false
+        textField.isEditable = false
+        textField.isSelectable = false
+        textField.maximumNumberOfLines = 0
+        textField.preferredMaxLayoutWidth = 396
+        textField.lineBreakMode = .byWordWrapping
+        self.textField = textField
 
-    init() {
-        logger.info("TranscriptionOverlay initialized")
-    }
+        // Create container with dark background
+        let container = NSView()
+        container.wantsLayer = true
+        container.layer?.backgroundColor = NSColor(red: 25/255, green: 25/255, blue: 25/255, alpha: 0.9).cgColor
+        container.layer?.cornerRadius = 10
 
-    /// Show the overlay near the given point
-    func show(near point: NSPoint) {
-        logger.info("Showing overlay near point: \(point.x), \(point.y)")
+        container.addSubview(textField)
+        textField.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            textField.topAnchor.constraint(equalTo: container.topAnchor, constant: 12),
+            textField.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -12),
+            textField.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+            textField.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
+        ])
 
-        hideTimer?.invalidate()
-        hideTimer = nil
-
-        // Create window if needed
-        if window == nil {
-            createWindow()
-        }
-
-        // Position window near cursor
-        updatePosition(near: point)
-
-        // Show window
-        window?.orderFrontRegardless()
-        window?.setIsVisible(true)
-
-        logger.info("Overlay window shown")
-    }
-
-    /// Hide the overlay
-    func hide() {
-        logger.info("Hiding overlay")
-        hideTimer?.invalidate()
-        hideTimer = nil
-
-        window?.setIsVisible(false)
-    }
-
-    /// Update overlay position to follow cursor
-    func updatePosition(near point: NSPoint) {
-        guard let window = window else { return }
-
-        // Calculate position (offset below and to the right of cursor)
-        let windowSize = window.frame.size
-        var newOrigin = point
-
-        // Offset from cursor
-        newOrigin.x += cursorOffset
-        newOrigin.y -= windowSize.height + cursorOffset
-
-        // Keep on screen
-        if let screen = NSScreen.main {
-            let screenFrame = screen.visibleFrame
-
-            // Don't go off right edge
-            if newOrigin.x + windowSize.width > screenFrame.maxX {
-                newOrigin.x = point.x - windowSize.width - cursorOffset
-            }
-
-            // Don't go off bottom
-            if newOrigin.y < screenFrame.minY {
-                newOrigin.y = point.y + cursorOffset
-            }
-
-            // Don't go off left edge
-            if newOrigin.x < screenFrame.minX {
-                newOrigin.x = screenFrame.minX
-            }
-
-            // Don't go off top
-            if newOrigin.y + windowSize.height > screenFrame.maxY {
-                newOrigin.y = screenFrame.maxY - windowSize.height
-            }
-        }
-
-        window.setFrameOrigin(newOrigin)
-    }
-
-    /// Create the overlay window
-    private func createWindow() {
-        logger.debug("Creating overlay window")
-
-        let contentView = NSHostingView(rootView: OverlayContent(state: state))
-        contentView.setFrameSize(contentView.fittingSize)
-
-        let window = NSWindow(
-            contentRect: NSRect(origin: .zero, size: contentView.fittingSize),
-            styleMask: [.borderless],
+        // Create panel
+        let panel = OverlayPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 44),
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.level = .floating
+        panel.ignoresMouseEvents = true
+        panel.collectionBehavior = [.canJoinAllSpaces, .stationary]
+        panel.hidesOnDeactivate = false
+        panel.contentView = container
+        self.panel = panel
 
-        window.contentView = contentView
-        window.backgroundColor = .clear
-        window.isOpaque = false
-        window.hasShadow = true
-        window.level = .floating
-        window.ignoresMouseEvents = true
-        window.collectionBehavior = [.canJoinAllSpaces, .stationary]
+        // Position at cursor BEFORE showing
+        let mouseLocation = NSEvent.mouseLocation
+        debugLog("TranscriptionOverlay: Mouse at \(mouseLocation)")
+        positionAtCursor()
 
-        // Don't show in mission control or app switcher
-        window.collectionBehavior.insert(.transient)
+        // Show the panel
+        panel.orderFrontRegardless()
+        debugLog("Overlay panel shown at \(panel.frame)")
 
-        self.window = window
-        logger.debug("Overlay window created")
+        // Start cursor-following timer (no async dispatch needed - timer fires on main thread)
+        cursorTimer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] _ in
+            self?.positionAtCursor()
+        }
+        RunLoop.main.add(cursorTimer!, forMode: .common)
     }
 
-    /// Update the window size based on content
-    private func updateWindowSize() {
-        guard let window = window,
-              let contentView = window.contentView as? NSHostingView<OverlayContent> else { return }
-
-        let newSize = contentView.fittingSize
-        var frame = window.frame
-        frame.size = newSize
-        window.setFrame(frame, display: true)
+    /// Update the displayed text
+    func updateText(_ text: String) {
+        textField?.stringValue = text.isEmpty ? "Listening..." : text
+        resizeToFit()
     }
 
-    // MARK: - State Management
+    /// Show an error message
+    func showError(_ message: String) {
+        textField?.stringValue = "⚠️ \(message)"
+        textField?.textColor = NSColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 1.0)
+        resizeToFit()
 
-    /// Set state to listening
-    func setListening() {
-        state.setListening()
-        updateWindowSize()
-    }
-
-    /// Set state to transcribing
-    func setTranscribing() {
-        state.setTranscribing()
-    }
-
-    /// Update the displayed transcript
-    func updateTranscript(_ text: String) {
-        state.updateTranscript(text)
-        DispatchQueue.main.async { [weak self] in
-            self?.updateWindowSize()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
+            self?.dismiss()
         }
     }
 
-    /// Set state to processing
-    func setProcessing() {
-        state.setProcessing()
-        updateWindowSize()
+    /// Dismiss the overlay
+    func dismiss() {
+        debugLog("TranscriptionOverlay.dismiss called")
+
+        cursorTimer?.invalidate()
+        cursorTimer = nil
+
+        panel?.orderOut(nil)
+        panel = nil
+        textField = nil
+
+        debugLog("Overlay dismissed")
     }
 
-    /// Show error message
-    func showError(_ message: String, autoDismissAfter seconds: TimeInterval = 4.0) {
-        state.setError(message)
-        updateWindowSize()
+    /// Position the panel near the cursor
+    private func positionAtCursor() {
+        guard let panel = panel else { return }
 
-        // Auto-dismiss after delay
-        hideTimer?.invalidate()
-        hideTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { [weak self] _ in
-            self?.hide()
+        let mouseLocation = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) }) ?? NSScreen.main
+        guard let screenFrame = screen?.visibleFrame else { return }
+
+        let windowSize = panel.frame.size
+
+        var x = mouseLocation.x + 24
+        var y = mouseLocation.y - windowSize.height - 24
+
+        if x + windowSize.width > screenFrame.maxX {
+            x = mouseLocation.x - windowSize.width - 24
         }
+        if y < screenFrame.minY {
+            y = mouseLocation.y + 24
+        }
+
+        panel.setFrameOrigin(NSPoint(x: x, y: y))
+    }
+
+    /// Resize panel to fit text content
+    private func resizeToFit() {
+        guard let textField = textField, let panel = panel else { return }
+
+        textField.sizeToFit()
+        let textSize = textField.fittingSize
+        let newWidth = min(max(textSize.width + 24, 100), 420)
+        let newHeight = max(textSize.height + 24, 44)
+
+        var frame = panel.frame
+        frame.size = NSSize(width: newWidth, height: newHeight)
+        panel.setFrame(frame, display: true)
     }
 }

@@ -23,7 +23,7 @@
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>
-    <true/>
+    <false/>
     <key>NSMicrophoneUsageDescription</key>
     <string>MaxVoice needs microphone access for speech recognition.</string>
     <key>NSHighResolutionCapable</key>

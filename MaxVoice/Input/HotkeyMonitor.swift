@@ -2,12 +2,13 @@ import Cocoa
 import os.log
 
 /// Protocol for hotkey events
+@MainActor
 protocol HotkeyMonitorDelegate: AnyObject {
-    func onHotkeyPressed()
-    func onHotkeyReleased()
+    func onHotkeyToggle()
 }
 
-/// Monitors for CMD key press/release using NSEvent global monitor
+/// Monitors for CMD key press using NSEvent global monitor (toggle mode)
+@MainActor
 final class HotkeyMonitor {
     private let logger = Logger(subsystem: "com.maxweisel.maxvoice", category: "HotkeyMonitor")
 
@@ -23,7 +24,7 @@ final class HotkeyMonitor {
     }
 
     deinit {
-        stop()
+        // Note: stop() must be called explicitly before deinit since we're @MainActor
     }
 
     /// Start monitoring for hotkey events
@@ -33,21 +34,30 @@ final class HotkeyMonitor {
             return
         }
 
-        logger.info("Starting hotkey monitoring for CMD key")
+        logger.info("Starting hotkey monitoring for CMD key (toggle mode)")
 
         // Global monitor for events when app is not focused
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
-            self?.handleFlagsChanged(event)
+            Task { @MainActor in
+                self?.handleFlagsChanged(event)
+            }
         }
 
         // Local monitor for events when app is focused
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
-            self?.handleFlagsChanged(event)
+            Task { @MainActor in
+                self?.handleFlagsChanged(event)
+            }
             return event
         }
 
-        isMonitoring = true
-        logger.info("Hotkey monitoring started")
+        // Verify monitors were created
+        if globalMonitor != nil {
+            isMonitoring = true
+            debugLog("Hotkey monitoring active - globalMonitor created")
+        } else {
+            debugLog("ERROR: Failed to create event monitor - check Accessibility permissions")
+        }
     }
 
     /// Stop monitoring for hotkey events
@@ -74,18 +84,18 @@ final class HotkeyMonitor {
     /// Handle modifier key changes
     private func handleFlagsChanged(_ event: NSEvent) {
         let cmdPressed = event.modifierFlags.contains(.command)
+        debugLog("handleFlagsChanged: cmdPressed=\(cmdPressed) isCommandPressed=\(isCommandPressed)")
 
-        // Detect transitions
+        // Only fire on press transition (toggle mode - ignore release)
         if cmdPressed && !isCommandPressed {
-            // CMD key pressed
-            logger.info("CMD key pressed")
+            // CMD key pressed - fire toggle
+            debugLog("CMD key pressed - toggling")
             isCommandPressed = true
-            delegate?.onHotkeyPressed()
+            delegate?.onHotkeyToggle()
         } else if !cmdPressed && isCommandPressed {
-            // CMD key released
-            logger.info("CMD key released")
+            // CMD key released - just update state, don't fire callback
+            debugLog("CMD key released")
             isCommandPressed = false
-            delegate?.onHotkeyReleased()
         }
     }
 

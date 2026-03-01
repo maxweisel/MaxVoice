@@ -23,6 +23,7 @@
 		A1000014234567890000014 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100014234567890000014 /* Config.swift */; };
 		A1000015234567890000015 /* ConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100015234567890000015 /* ConfigManager.swift */; };
 		A1000016234567890000016 /* AccessibilityChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100016234567890000016 /* AccessibilityChecker.swift */; };
+		A1000017234567890000017 /* DebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1100018234567890000018 /* DebugLog.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +45,7 @@
 		A1100015234567890000015 /* ConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigManager.swift; sourceTree = "<group>"; };
 		A1100016234567890000016 /* AccessibilityChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityChecker.swift; sourceTree = "<group>"; };
 		A1100017234567890000017 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1100018234567890000018 /* DebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLog.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,6 +77,7 @@
 				A1400008234567890000008 /* UI */,
 				A1400009234567890000009 /* Config */,
 				A1400010234567890000010 /* Accessibility */,
+				A1400011234567890000011 /* Utils */,
 				A1100017234567890000017 /* Info.plist */,
 			);
 			path = MaxVoice;
@@ -151,6 +154,14 @@
 				A1100016234567890000016 /* AccessibilityChecker.swift */,
 			);
 			path = Accessibility;
+			sourceTree = "<group>";
+		};
+		A1400011234567890000011 /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				A1100018234567890000018 /* DebugLog.swift */,
+			);
+			path = Utils;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -237,6 +248,7 @@
 				A1000014234567890000014 /* Config.swift in Sources */,
 				A1000015234567890000015 /* ConfigManager.swift in Sources */,
 				A1000016234567890000016 /* AccessibilityChecker.swift in Sources */,
+				A1000017234567890000017 /* DebugLog.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

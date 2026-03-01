@@ -1,135 +1,89 @@
-import Cocoa
-import os.log
+import SwiftUI
+import AppKit
+import ApplicationServices
 
-/// Main application entry point
 @main
+struct MaxVoiceApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
+    var body: some Scene {
+        Settings {
+            EmptyView()
+        }
+    }
+}
+
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
-    private let logger = Logger(subsystem: "com.maxweisel.maxvoice", category: "AppDelegate")
-
     private var appState: AppState?
-    private var permissionCheckTimer: Timer?
-    private var permissionCheckAttempts = 0
-    private let maxPermissionAttempts = 3
-
-    // MARK: - Application Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        logger.info("MaxVoice starting up")
-        logger.info("Process ID: \(ProcessInfo.processInfo.processIdentifier)")
-        logger.info("Bundle ID: \(Bundle.main.bundleIdentifier ?? "unknown")")
+        debugLog("applicationDidFinishLaunching called")
 
-        // Hide from dock (should also be in Info.plist)
-        NSApp.setActivationPolicy(.accessory)
+        // Request accessibility permission - shows system prompt
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        let accessibilityEnabled = AXIsProcessTrustedWithOptions(options)
+        debugLog("Accessibility enabled = \(accessibilityEnabled)")
 
-        // Start permission checks
-        Task {
-            await checkPermissionsAndStart()
+        if !accessibilityEnabled {
+            debugLog("Waiting for accessibility permission...")
+            let appPath = Bundle.main.bundleURL.path
+            schedulePermissionCheck(appPath: appPath)
+            return
+        }
+
+        debugLog("Accessibility OK, starting app")
+        ConfigManager.shared.removeAccessibilityFailedMarker()
+        startApp()
+    }
+
+    private func schedulePermissionCheck(appPath: String) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            if AXIsProcessTrusted() {
+                debugLog("Permission granted, restarting...")
+                Process.launchedProcess(launchPath: "/usr/bin/open", arguments: ["-n", appPath])
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    NSApp.terminate(nil)
+                }
+            } else {
+                debugLog("Still waiting...")
+                self?.schedulePermissionCheck(appPath: appPath)
+            }
         }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        logger.info("MaxVoice terminating")
+        debugLog("Terminating")
         appState?.stop()
     }
 
-    // MARK: - Permission Checking
+    private func startApp() {
+        debugLog("startApp called")
 
-    private func checkPermissionsAndStart() async {
-        logger.info("Checking permissions")
-
-        // Check microphone permission
-        let audioRecorder = AudioRecorder()
-        let micPermission = await audioRecorder.requestPermission()
-
-        if !micPermission {
-            logger.error("Microphone permission denied")
-            showPermissionError("Microphone access required. Please grant permission in System Settings > Privacy & Security > Microphone.")
+        guard let config = ConfigManager.shared.load() else {
+            debugLog("Failed to load config")
+            showError("Config Error", "Could not load ~/.maxvoice/config.json")
             return
         }
 
-        logger.info("Microphone permission granted")
-
-        // Check accessibility permission
-        if AccessibilityChecker.hasPermission() {
-            logger.info("Accessibility permission already granted")
-            ConfigManager.shared.removeAccessibilityFailedMarker()
-            startApp()
-        } else {
-            logger.warning("Accessibility permission not granted, prompting")
-            AccessibilityChecker.promptForPermission()
-            startPermissionPolling()
+        guard !config.googleApiKey.isEmpty else {
+            debugLog("API key is empty")
+            showError("API Key Missing", "Add googleApiKey to ~/.maxvoice/config.json")
+            return
         }
-    }
 
-    /// Start polling for accessibility permission
-    private func startPermissionPolling() {
-        logger.info("Starting accessibility permission polling (max \(self.maxPermissionAttempts) attempts)")
-
-        permissionCheckAttempts = 0
-
-        // Poll every 3.3 seconds (will check 3 times over ~10 seconds)
-        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 3.3, repeats: true) { [weak self] _ in
-            self?.checkAccessibilityPermission()
-        }
-    }
-
-    /// Check if accessibility permission has been granted
-    private func checkAccessibilityPermission() {
-        permissionCheckAttempts += 1
-        logger.info("Accessibility permission check attempt \(self.permissionCheckAttempts)/\(self.maxPermissionAttempts)")
-
-        if AccessibilityChecker.hasPermission() {
-            logger.info("Accessibility permission granted!")
-            permissionCheckTimer?.invalidate()
-            permissionCheckTimer = nil
-            ConfigManager.shared.removeAccessibilityFailedMarker()
-            startApp()
-        } else if permissionCheckAttempts >= maxPermissionAttempts {
-            logger.error("Accessibility permission not granted after \(self.maxPermissionAttempts) attempts")
-            permissionCheckTimer?.invalidate()
-            permissionCheckTimer = nil
-            exitWithAccessibilityFailure()
-        } else {
-            logger.debug("Accessibility permission still not granted, will check again")
-        }
-    }
-
-    /// Exit app due to accessibility permission failure
-    private func exitWithAccessibilityFailure() {
-        logger.warning("Exiting due to accessibility permission failure")
-
-        // Create marker file so launch agent doesn't restart us
-        ConfigManager.shared.createAccessibilityFailedMarker()
-
-        // Show notification to user
-        showPermissionError("Accessibility permission required. Please grant permission in System Settings > Privacy & Security > Accessibility, then restart MaxVoice.")
-
-        // Give user time to see the notification
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-            NSApp.terminate(nil)
-        }
-    }
-
-    // MARK: - App Startup
-
-    /// Start the main application
-    private func startApp() {
-        logger.info("Starting main application")
-
+        debugLog("Config loaded, initializing AppState")
         appState = AppState()
         appState?.start()
-
-        logger.info("MaxVoice is ready - hold CMD to record")
+        debugLog("Ready - press CMD to toggle recording")
     }
 
-    /// Show permission error to user
-    private func showPermissionError(_ message: String) {
-        logger.error("Permission error: \(message)")
-
-        // Show overlay with error
-        let overlay = TranscriptionOverlay()
-        overlay.show(near: NSEvent.mouseLocation)
-        overlay.showError(message, autoDismissAfter: 10)
-        SoundPlayer.playError()
+    private func showError(_ title: String, _ message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .critical
+        alert.runModal()
+        NSApp.terminate(nil)
     }
 }

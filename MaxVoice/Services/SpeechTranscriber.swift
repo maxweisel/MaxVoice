@@ -2,10 +2,10 @@ import Foundation
 import os.log
 
 /// Protocol for receiving transcription events
-protocol SpeechTranscriberDelegate: AnyObject {
-    func onInterimResult(_ text: String)
-    func onFinalResult(_ text: String)
-    func onError(_ error: Error)
+protocol SpeechTranscriberDelegate: AnyObject, Sendable {
+    nonisolated func onInterimResult(_ text: String)
+    nonisolated func onFinalResult(_ text: String)
+    nonisolated func onError(_ error: Error)
 }
 
 /// Handles streaming transcription using Google Cloud Speech-to-Text gRPC API
@@ -34,16 +34,18 @@ final class SpeechTranscriber {
     /// Start streaming transcription
     func startStreaming(audioRecorder: AudioRecorder) {
         guard !isStreaming else {
-            logger.warning("Already streaming, ignoring start request")
+            debugLog("SpeechTranscriber: Already streaming, ignoring start request")
             return
         }
 
-        logger.info("Starting streaming transcription")
+        debugLog("SpeechTranscriber: Starting streaming transcription")
         isStreaming = true
         accumulatedTranscript = ""
 
         streamTask = Task { [weak self] in
+            debugLog("SpeechTranscriber: Stream task started")
             await self?.runStreamingSession(audioRecorder: audioRecorder)
+            debugLog("SpeechTranscriber: Stream task ended")
         }
     }
 
@@ -60,7 +62,7 @@ final class SpeechTranscriber {
     /// Run the streaming session using chunked HTTP (simulating gRPC behavior)
     /// Note: True gRPC requires additional setup. This uses the REST API with chunked audio.
     private func runStreamingSession(audioRecorder: AudioRecorder) async {
-        logger.info("Streaming session started")
+        debugLog("SpeechTranscriber: Streaming session started, waiting for audio chunks...")
 
         var audioChunks: [Data] = []
         var chunkCount = 0
@@ -70,27 +72,33 @@ final class SpeechTranscriber {
             audioChunks.append(chunk)
             chunkCount += 1
 
-            // For interim results, we'd need true gRPC bidirectional streaming
-            // With REST API, we send updates periodically
+            if chunkCount == 1 {
+                debugLog("SpeechTranscriber: Received first audio chunk (\(chunk.count) bytes)")
+            }
+
+            // For interim results, send to Google periodically
             if chunkCount % 15 == 0 {  // Every ~1 second of audio
+                debugLog("SpeechTranscriber: Sending interim transcription request (chunk \(chunkCount))")
                 let currentAudio = audioChunks.reduce(Data()) { $0 + $1 }
                 if let interimText = await transcribeAudio(currentAudio, isFinal: false) {
-                    logger.debug("Interim result: \(interimText)")
+                    debugLog("SpeechTranscriber: Interim result: \(interimText)")
                     await MainActor.run { [weak self] in
                         self?.delegate?.onInterimResult(interimText)
                     }
+                } else {
+                    debugLog("SpeechTranscriber: Interim transcription returned nil")
                 }
             }
         }
 
-        logger.info("Audio stream ended, received \(chunkCount) chunks")
+        debugLog("SpeechTranscriber: Audio stream ended, received \(chunkCount) chunks")
 
         // Combine all audio and send final transcription request
         let allAudio = audioChunks.reduce(Data()) { $0 + $1 }
-        logger.info("Total audio size: \(allAudio.count) bytes")
+        debugLog("SpeechTranscriber: Total audio size: \(allAudio.count) bytes")
 
         if allAudio.isEmpty {
-            logger.warning("No audio data received")
+            debugLog("SpeechTranscriber: ERROR - No audio data received")
             await MainActor.run { [weak self] in
                 self?.delegate?.onError(TranscriberError.noAudioData)
             }
@@ -99,26 +107,27 @@ final class SpeechTranscriber {
         }
 
         // Final transcription
+        debugLog("SpeechTranscriber: Sending final transcription request...")
         if let finalText = await transcribeAudio(allAudio, isFinal: true) {
-            logger.info("Final transcription: \(finalText)")
+            debugLog("SpeechTranscriber: Final transcription: \(finalText)")
             await MainActor.run { [weak self] in
                 self?.delegate?.onFinalResult(finalText)
             }
         } else {
-            logger.error("Failed to get final transcription")
+            debugLog("SpeechTranscriber: ERROR - Failed to get final transcription")
             await MainActor.run { [weak self] in
                 self?.delegate?.onError(TranscriberError.transcriptionFailed)
             }
         }
 
         isStreaming = false
-        logger.info("Streaming session ended")
+        debugLog("SpeechTranscriber: Streaming session ended")
     }
 
     /// Transcribe audio using Google Cloud Speech-to-Text REST API
     private func transcribeAudio(_ audioData: Data, isFinal: Bool) async -> String? {
         guard !apiKey.isEmpty else {
-            logger.error("API key is empty")
+            debugLog("SpeechTranscriber: ERROR - API key is empty")
             return nil
         }
 
@@ -139,7 +148,7 @@ final class SpeechTranscriber {
         ]
 
         guard let url = URL(string: "\(apiEndpoint)?key=\(apiKey)") else {
-            logger.error("Failed to create API URL")
+            debugLog("SpeechTranscriber: ERROR - Failed to create API URL")
             return nil
         }
 
@@ -151,36 +160,38 @@ final class SpeechTranscriber {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         } catch {
-            logger.error("Failed to serialize request: \(error.localizedDescription)")
+            debugLog("SpeechTranscriber: ERROR - Failed to serialize request: \(error.localizedDescription)")
             return nil
         }
 
-        logger.debug("Sending \(isFinal ? "final" : "interim") transcription request (\(audioData.count) bytes audio)")
+        debugLog("SpeechTranscriber: Sending \(isFinal ? "final" : "interim") request (\(audioData.count) bytes)")
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                logger.error("Invalid response type")
+                debugLog("SpeechTranscriber: ERROR - Invalid response type")
                 return nil
             }
 
+            debugLog("SpeechTranscriber: Response status: \(httpResponse.statusCode)")
+
             if httpResponse.statusCode != 200 {
                 if let errorBody = String(data: data, encoding: .utf8) {
-                    logger.error("Speech API error (\(httpResponse.statusCode)): \(errorBody)")
+                    debugLog("SpeechTranscriber: API error (\(httpResponse.statusCode)): \(errorBody.prefix(500))")
                 }
                 return nil
             }
 
             // Parse response
             guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                logger.error("Failed to parse response JSON")
+                debugLog("SpeechTranscriber: ERROR - Failed to parse response JSON")
                 return nil
             }
 
             // Extract transcript from results
             guard let results = json["results"] as? [[String: Any]] else {
-                logger.debug("No results in response")
+                debugLog("SpeechTranscriber: No results in response (empty audio?)")
                 return ""
             }
 
@@ -193,10 +204,11 @@ final class SpeechTranscriber {
                 }
             }
 
+            debugLog("SpeechTranscriber: Got transcript: \(fullTranscript.prefix(100))")
             return fullTranscript.isEmpty ? nil : fullTranscript
 
         } catch {
-            logger.error("Transcription request failed: \(error.localizedDescription)")
+            debugLog("SpeechTranscriber: ERROR - Request failed: \(error.localizedDescription)")
             return nil
         }
     }

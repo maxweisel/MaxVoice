@@ -2,6 +2,7 @@ import Cocoa
 import os.log
 
 /// Main application state coordinator
+@MainActor
 final class AppState: HotkeyMonitorDelegate, SpeechTranscriberDelegate {
     private let logger = Logger(subsystem: "com.maxweisel.maxvoice", category: "AppState")
 
@@ -18,7 +19,6 @@ final class AppState: HotkeyMonitorDelegate, SpeechTranscriberDelegate {
 
     // State
     private var isRecording = false
-    private var recordingStartPoint: NSPoint?
 
     init() {
         logger.info("AppState initializing")
@@ -32,19 +32,11 @@ final class AppState: HotkeyMonitorDelegate, SpeechTranscriberDelegate {
         // Load config
         guard let config = configManager.load() else {
             logger.error("Failed to load config - check ~/.maxvoice/config.json")
-            showConfigError()
             return
         }
 
         self.config = config
         logger.info("Config loaded successfully")
-
-        // Validate API key
-        guard !config.googleApiKey.isEmpty else {
-            logger.error("Google API key is empty")
-            showApiKeyError()
-            return
-        }
 
         // Initialize services
         audioRecorder = AudioRecorder()
@@ -57,7 +49,7 @@ final class AppState: HotkeyMonitorDelegate, SpeechTranscriberDelegate {
 
         // Start hotkey monitoring
         hotkeyMonitor.start()
-        logger.info("Application started - listening for CMD key")
+        logger.info("Application started - press CMD to toggle recording")
     }
 
     /// Stop the application
@@ -67,57 +59,89 @@ final class AppState: HotkeyMonitorDelegate, SpeechTranscriberDelegate {
         if isRecording {
             audioRecorder?.stopRecording()
         }
-        overlay.hide()
+        overlay.dismiss()
     }
 
     // MARK: - HotkeyMonitorDelegate
 
-    func onHotkeyPressed() {
-        logger.info("Hotkey pressed - starting recording")
-
-        guard !isRecording else {
-            logger.warning("Already recording, ignoring")
-            return
+    func onHotkeyToggle() {
+        debugLog("onHotkeyToggle called, isRecording=\(isRecording)")
+        if isRecording {
+            stopRecording()
+        } else {
+            startRecording()
         }
+    }
+
+    // MARK: - Recording Control
+
+    private func startRecording() {
+        debugLog("startRecording called")
 
         guard let audioRecorder = audioRecorder else {
-            logger.error("AudioRecorder not initialized")
+            debugLog("ERROR: AudioRecorder not initialized")
             return
         }
 
         // Play start sound
         SoundPlayer.playStart()
+        debugLog("Start sound played")
 
-        // Get mouse position
-        let mouseLocation = NSEvent.mouseLocation
-        recordingStartPoint = mouseLocation
+        // Show overlay at cursor immediately
+        debugLog("Showing overlay...")
+        overlay.showAtCursor()
 
-        // Show overlay
-        overlay.show(near: mouseLocation)
-        overlay.setListening()
+        // Request microphone permission first (async)
+        Task {
+            debugLog("Requesting microphone permission...")
+            let hasPermission = await audioRecorder.requestPermission()
+            debugLog("Microphone permission: \(hasPermission)")
 
+            guard hasPermission else {
+                debugLog("ERROR: Microphone permission denied")
+                await MainActor.run {
+                    SoundPlayer.playError()
+                    self.overlay.showError("Microphone permission denied")
+                }
+                return
+            }
+
+            await MainActor.run {
+                self.doStartRecording(audioRecorder: audioRecorder)
+            }
+        }
+    }
+
+    private func doStartRecording(audioRecorder: AudioRecorder) {
         // Start recording
         do {
+            debugLog("Calling audioRecorder.startRecording()...")
             try audioRecorder.startRecording()
             isRecording = true
+            debugLog("Audio recording started successfully")
 
             // Start transcription streaming
+            debugLog("Starting transcription streaming...")
             transcriber?.startStreaming(audioRecorder: audioRecorder)
 
             logger.info("Recording started")
+            debugLog("Recording started - streaming to transcriber")
+            print("🎤 Recording...")
         } catch {
+            let errorMsg = "Failed to start recording: \(error.localizedDescription)"
+            debugLog("ERROR: \(errorMsg)")
             logger.error("Failed to start recording: \(error.localizedDescription)")
             SoundPlayer.playError()
-            overlay.showError("Failed to start recording")
+            overlay.showError(errorMsg)
             isRecording = false
         }
     }
 
-    func onHotkeyReleased() {
-        logger.info("Hotkey released - stopping recording")
+    private func stopRecording() {
+        debugLog("stopRecording called")
 
         guard isRecording else {
-            logger.warning("Not recording, ignoring")
+            debugLog("Not recording, ignoring stop")
             return
         }
 
@@ -127,34 +151,41 @@ final class AppState: HotkeyMonitorDelegate, SpeechTranscriberDelegate {
         audioRecorder?.stopRecording()
 
         // Show processing state
-        overlay.setProcessing()
+        overlay.updateText("Processing...")
+        debugLog("Recording stopped, waiting for final transcription")
 
-        logger.info("Recording stopped, waiting for final transcription")
+        // Safety timeout - dismiss overlay after 30 seconds if transcription hangs
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in
+            if self?.overlay != nil {
+                debugLog("Safety timeout - dismissing overlay")
+                self?.overlay.dismiss()
+            }
+        }
     }
 
     // MARK: - SpeechTranscriberDelegate
 
-    func onInterimResult(_ text: String) {
-        logger.debug("Interim result: \(text)")
-        DispatchQueue.main.async { [weak self] in
-            self?.overlay.updateTranscript(text)
-            self?.overlay.setTranscribing()
+    nonisolated func onInterimResult(_ text: String) {
+        Task { @MainActor in
+            debugLog("AppState: Interim result received: \(text)")
+            overlay.updateText(text)
         }
     }
 
-    func onFinalResult(_ text: String) {
-        logger.info("Final transcription received: \(text)")
-
-        Task { [weak self] in
-            await self?.processAndPaste(text)
+    nonisolated func onFinalResult(_ text: String) {
+        Task { @MainActor in
+            debugLog("AppState: Final result received: \(text)")
+            print("✓ Transcript: \(text)")
+            await processAndPaste(text)
         }
     }
 
-    func onError(_ error: Error) {
-        logger.error("Transcription error: \(error.localizedDescription)")
-        DispatchQueue.main.async { [weak self] in
+    nonisolated func onError(_ error: Error) {
+        Task { @MainActor in
+            debugLog("AppState: Transcription error: \(error.localizedDescription)")
+            print("❌ Error: \(error.localizedDescription)")
             SoundPlayer.playError()
-            self?.overlay.showError(error.localizedDescription)
+            overlay.showError(error.localizedDescription)
         }
     }
 
@@ -162,51 +193,36 @@ final class AppState: HotkeyMonitorDelegate, SpeechTranscriberDelegate {
 
     /// Process transcript and paste result
     private func processAndPaste(_ transcript: String) async {
-        logger.info("Processing transcript: \(transcript.count) characters")
+        debugLog("AppState: Processing transcript: \(transcript.count) characters")
 
         var result = transcript
 
         // Optional Gemini post-processing
         if let prompt = config?.postProcessingPrompt, !prompt.isEmpty, let processor = postProcessor {
-            logger.info("Applying Gemini post-processing")
+            debugLog("AppState: Applying Gemini post-processing")
             result = await processor.process(transcript: result, prompt: prompt)
-            logger.info("Post-processing complete")
+            debugLog("AppState: Post-processing complete")
         }
 
         // Apply word replacements
         if let replacements = config?.replacements, !replacements.isEmpty {
-            logger.info("Applying word replacements")
+            debugLog("AppState: Applying word replacements")
             result = replacer.apply(replacements: replacements, to: result)
         }
 
-        // Capture final result for use in MainActor block
-        let finalResult = result
-
         // Play stop sound and paste
-        await MainActor.run { [weak self] in
-            SoundPlayer.playStop()
-            self?.overlay.hide()
+        debugLog("AppState: Playing stop sound")
+        SoundPlayer.playStop()
+        debugLog("AppState: Dismissing overlay")
+        overlay.dismiss()
 
-            if !finalResult.isEmpty {
-                self?.paster.paste(text: finalResult)
-                self?.logger.info("Pasted \(finalResult.count) characters")
-            } else {
-                self?.logger.warning("No text to paste")
-            }
+        if !result.isEmpty {
+            debugLog("AppState: Pasting \(result.count) characters: \(result)")
+            paster.paste(text: result)
+            print("📋 Pasted: \(result)")
+        } else {
+            debugLog("AppState: No text to paste")
+            print("⚠️ No text to paste")
         }
-    }
-
-    /// Show config file error
-    private func showConfigError() {
-        overlay.show(near: NSEvent.mouseLocation)
-        overlay.showError("Config not found — create ~/.maxvoice/config.json")
-        SoundPlayer.playError()
-    }
-
-    /// Show API key error
-    private func showApiKeyError() {
-        overlay.show(near: NSEvent.mouseLocation)
-        overlay.showError("API key missing — check ~/.maxvoice/config.json")
-        SoundPlayer.playError()
     }
 }

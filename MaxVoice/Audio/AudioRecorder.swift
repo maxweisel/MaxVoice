@@ -46,12 +46,12 @@ final class AudioRecorder {
 
     /// Set up the audio pipeline - tap input directly and convert
     private func setupAudioPipeline() throws {
-        debugLog("Setting up audio pipeline")
+        debugLog("AudioRecorder.setupAudioPipeline: BEGIN")
 
         let inputNode = audioEngine.inputNode
         let inputFormat = inputNode.outputFormat(forBus: 0)
 
-        debugLog("Input device format - sample rate: \(inputFormat.sampleRate), channels: \(inputFormat.channelCount)")
+        debugLog("AudioRecorder.setupAudioPipeline: inputFormat sampleRate=\(inputFormat.sampleRate), channels=\(inputFormat.channelCount)")
 
         // Store input format for conversion
         self.inputSampleRate = inputFormat.sampleRate
@@ -60,11 +60,12 @@ final class AudioRecorder {
         // Install tap directly on input node with native format
         let bufferSize: AVAudioFrameCount = 4096
 
+        debugLog("AudioRecorder.setupAudioPipeline: About to installTap on bus 0")
         inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) { [weak self] buffer, time in
             self?.processInputBuffer(buffer)
         }
 
-        debugLog("Audio tap installed on input node with buffer size: \(bufferSize)")
+        debugLog("AudioRecorder.setupAudioPipeline: Tap installed successfully")
     }
 
     private var inputSampleRate: Double = 48000
@@ -72,8 +73,13 @@ final class AudioRecorder {
 
     /// Process input buffer - convert from native format to 16kHz mono LINEAR16
     private func processInputBuffer(_ buffer: AVAudioPCMBuffer) {
+        // Log first buffer immediately before any guards
+        if bufferCount == 0 {
+            debugLog("AudioRecorder.processInputBuffer: FIRST BUFFER RECEIVED - frameLength=\(buffer.frameLength)")
+        }
+
         guard let channelData = buffer.floatChannelData else {
-            debugLog("AudioRecorder: No channel data in audio buffer")
+            debugLog("AudioRecorder.processInputBuffer: ERROR - No channel data!")
             return
         }
 
@@ -125,57 +131,72 @@ final class AudioRecorder {
 
     /// Start recording audio
     func startRecording() throws {
+        debugLog("AudioRecorder.startRecording: BEGIN - isRecording=\(isRecording), engine.isRunning=\(audioEngine.isRunning)")
+
         guard !isRecording else {
-            debugLog("AudioRecorder: Already recording, ignoring start request")
+            debugLog("AudioRecorder.startRecording: Already recording, EARLY RETURN")
             return
         }
 
-        debugLog("AudioRecorder: Starting audio recording")
         recordingStartTime = Date()
         bufferCount = 0
 
         // Clear any leftover data
+        debugLog("AudioRecorder.startRecording: Calling audioQueue.clear()")
         audioQueue.clear()
+        debugLog("AudioRecorder.startRecording: audioQueue.clear() complete")
 
         // Set up pipeline
+        debugLog("AudioRecorder.startRecording: Calling setupAudioPipeline()")
         try setupAudioPipeline()
+        debugLog("AudioRecorder.startRecording: setupAudioPipeline() complete")
 
         // Start the audio engine
+        debugLog("AudioRecorder.startRecording: Calling audioEngine.start(), engine.isRunning=\(audioEngine.isRunning)")
         do {
             try audioEngine.start()
             isRecording = true
+            debugLog("AudioRecorder.startRecording: audioEngine.start() SUCCESS, engine.isRunning=\(audioEngine.isRunning)")
             logger.info("Audio engine started successfully")
         } catch {
+            debugLog("AudioRecorder.startRecording: audioEngine.start() FAILED - \(error)")
             logger.error("Failed to start audio engine: \(error.localizedDescription)")
             throw AudioRecorderError.engineStartFailed(error)
         }
+
+        debugLog("AudioRecorder.startRecording: END - isRecording=\(isRecording)")
     }
 
     /// Stop recording and signal end of stream
     func stopRecording() {
+        debugLog("AudioRecorder.stopRecording: BEGIN - isRecording=\(isRecording), engine.isRunning=\(audioEngine.isRunning), bufferCount=\(bufferCount)")
+
         guard isRecording else {
-            debugLog("AudioRecorder: Not recording, ignoring stop request")
+            debugLog("AudioRecorder.stopRecording: Not recording, EARLY RETURN")
             return
         }
-
-        debugLog("AudioRecorder: Stopping audio recording")
 
         // Calculate recording duration
         if let startTime = recordingStartTime {
             let duration = Date().timeIntervalSince(startTime)
-            debugLog("AudioRecorder: Recording duration: \(String(format: "%.2f", duration)) seconds")
+            debugLog("AudioRecorder.stopRecording: Recording duration: \(String(format: "%.2f", duration)) seconds")
         }
 
         // Stop the engine and remove tap
+        debugLog("AudioRecorder.stopRecording: Removing tap from bus 0")
         audioEngine.inputNode.removeTap(onBus: 0)
+        debugLog("AudioRecorder.stopRecording: Tap removed")
+
+        debugLog("AudioRecorder.stopRecording: Stopping engine, engine.isRunning=\(audioEngine.isRunning)")
         audioEngine.stop()
+        debugLog("AudioRecorder.stopRecording: Engine stopped, engine.isRunning=\(audioEngine.isRunning)")
 
         isRecording = false
 
         // Push end-of-stream sentinel
+        debugLog("AudioRecorder.stopRecording: Pushing nil sentinel to queue")
         audioQueue.push(nil)
-
-        debugLog("AudioRecorder: Audio recording stopped")
+        debugLog("AudioRecorder.stopRecording: END - total buffers processed=\(bufferCount)")
     }
 
     /// Get next audio chunk (blocking)

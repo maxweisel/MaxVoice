@@ -31,15 +31,23 @@ final class AudioQueue {
 
     /// Pop audio data from the queue. Returns nil for end of stream. Blocks if queue is empty.
     func pop() -> Data? {
+        debugLog("AudioQueue.pop: Waiting on semaphore...")
         semaphore.wait()
+        debugLog("AudioQueue.pop: Semaphore signaled, acquiring lock")
+
         lock.lock()
         // Safety check in case queue was cleared between semaphore signal and now
         guard !queue.isEmpty else {
+            debugLog("AudioQueue.pop: Queue empty after semaphore! Returning nil")
             lock.unlock()
             return nil
         }
         let data = queue.removeFirst()
+        let isNil = data == nil
+        let size = data?.count ?? 0
         lock.unlock()
+
+        debugLog("AudioQueue.pop: Returned \(isNil ? "nil (end sentinel)" : "\(size) bytes")")
         return data
     }
 
@@ -62,15 +70,22 @@ final class AudioQueue {
     func clear() {
         lock.lock()
         let count = queue.count
+        debugLog("AudioQueue.clear: BEGIN - queue.count=\(count), totalBytesQueued=\(totalBytesQueued)")
+
         queue.removeAll()
         totalBytesQueued = 0
         chunkCount = 0
         lock.unlock()
 
         // Drain the semaphore to match the now-empty queue
+        debugLog("AudioQueue.clear: Draining \(count) semaphore signals")
+        var drained = 0
         for _ in 0..<count {
-            _ = semaphore.wait(timeout: .now())
+            if semaphore.wait(timeout: .now()) == .success {
+                drained += 1
+            }
         }
+        debugLog("AudioQueue.clear: END - drained \(drained) signals")
 
         logger.info("AudioQueue: cleared \(count) items")
     }

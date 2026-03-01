@@ -44,17 +44,20 @@ final class GRPCStreamingTranscriber: @unchecked Sendable {
 
     /// Start streaming transcription
     func startStreaming(audioRecorder: AudioRecorder) {
+        debugLog("GRPCStreamingTranscriber.startStreaming: BEGIN - isStreaming=\(isStreaming), channel=\(channel != nil ? "exists" : "nil")")
+
         guard !isStreaming else {
-            debugLog("GRPCStreamingTranscriber: Already streaming")
+            debugLog("GRPCStreamingTranscriber.startStreaming: ALREADY STREAMING - EARLY RETURN (THIS IS THE BUG!)")
             return
         }
 
         isStreaming = true
-        debugLog("GRPCStreamingTranscriber: Starting streaming session")
+        debugLog("GRPCStreamingTranscriber.startStreaming: Set isStreaming=true, creating streamTask")
 
         streamTask = Task { [weak self] in
             await self?.runStreamingSession(audioRecorder: audioRecorder)
         }
+        debugLog("GRPCStreamingTranscriber.startStreaming: END - streamTask created")
     }
 
     /// Stop streaming
@@ -68,18 +71,22 @@ final class GRPCStreamingTranscriber: @unchecked Sendable {
 
     /// Run the streaming session
     private func runStreamingSession(audioRecorder: AudioRecorder) async {
+        debugLog("GRPCStreamingTranscriber.runStreamingSession: BEGIN")
+
         do {
             // Set up gRPC channel
+            debugLog("GRPCStreamingTranscriber.runStreamingSession: Calling setupChannel, channel=\(channel != nil ? "exists" : "nil")")
             try await setupChannel()
+            debugLog("GRPCStreamingTranscriber.runStreamingSession: setupChannel complete, channel=\(channel != nil ? "exists" : "nil")")
 
             guard let client = client else {
-                debugLog("GRPCStreamingTranscriber: ERROR - Client not initialized")
+                debugLog("GRPCStreamingTranscriber.runStreamingSession: ERROR - Client not initialized")
                 return
             }
 
             // Get access token from service account
             let accessToken = try await getAccessToken()
-            debugLog("GRPCStreamingTranscriber: Got access token")
+            debugLog("GRPCStreamingTranscriber.runStreamingSession: Got access token")
 
             // Create call options with Bearer token
             var callOptions = CallOptions()
@@ -125,12 +132,16 @@ final class GRPCStreamingTranscriber: @unchecked Sendable {
             configRequest.streamingConfig = streamingConfig
 
             try await stream.requestStream.send(configRequest)
-            debugLog("GRPCStreamingTranscriber: Sent config - model: \(recognitionConfig.model), language: \(recognitionConfig.languageCodes)")
+            debugLog("GRPCStreamingTranscriber.runStreamingSession: Sent config - model: \(recognitionConfig.model), language: \(recognitionConfig.languageCodes)")
 
             // Stream audio chunks
+            debugLog("GRPCStreamingTranscriber.runStreamingSession: About to start reading audio chunks")
             var chunkCount = 0
             while let chunk = audioRecorder.getNextChunk() {
-                guard isStreaming else { break }
+                guard isStreaming else {
+                    debugLog("GRPCStreamingTranscriber.runStreamingSession: isStreaming became false, breaking loop")
+                    break
+                }
 
                 var audioRequest = Google_Cloud_Speech_V2_StreamingRecognizeRequest()
                 audioRequest.audio = chunk
@@ -139,11 +150,11 @@ final class GRPCStreamingTranscriber: @unchecked Sendable {
                 chunkCount += 1
 
                 if chunkCount == 1 {
-                    debugLog("GRPCStreamingTranscriber: Sent first audio chunk (\(chunk.count) bytes)")
+                    debugLog("GRPCStreamingTranscriber.runStreamingSession: FIRST CHUNK from audioRecorder - \(chunk.count) bytes")
                 }
             }
 
-            debugLog("GRPCStreamingTranscriber: Finished sending \(chunkCount) audio chunks")
+            debugLog("GRPCStreamingTranscriber.runStreamingSession: Finished reading chunks, total=\(chunkCount)")
 
             // Close the request stream
             stream.requestStream.finish()
@@ -152,14 +163,39 @@ final class GRPCStreamingTranscriber: @unchecked Sendable {
             await responseTask?.value
 
         } catch {
-            debugLog("GRPCStreamingTranscriber: ERROR - \(error)")
+            debugLog("GRPCStreamingTranscriber.runStreamingSession: ERROR - \(error)")
             await MainActor.run { [weak self] in
                 self?.delegate?.onError(error)
             }
         }
 
+        let wasStreaming = isStreaming
         isStreaming = false
-        debugLog("GRPCStreamingTranscriber: Session ended")
+
+        // Close channel to ensure fresh connection for next session
+        // (reusing channels causes empty transcripts on subsequent streams)
+        debugLog("GRPCStreamingTranscriber.runStreamingSession: Closing channel for clean state")
+        closeChannel()
+
+        debugLog("GRPCStreamingTranscriber.runStreamingSession: END - wasStreaming=\(wasStreaming), now isStreaming=false")
+    }
+
+    /// Close the gRPC channel
+    private func closeChannel() {
+        if let channel = channel {
+            debugLog("GRPCStreamingTranscriber.closeChannel: Closing channel")
+            try? channel.close().wait()
+        }
+        channel = nil
+        client = nil
+        stream = nil
+
+        if let group = group {
+            debugLog("GRPCStreamingTranscriber.closeChannel: Shutting down event loop group")
+            try? group.syncShutdownGracefully()
+        }
+        group = nil
+        debugLog("GRPCStreamingTranscriber.closeChannel: Done")
     }
 
     /// Handle streaming responses
@@ -208,9 +244,14 @@ final class GRPCStreamingTranscriber: @unchecked Sendable {
 
     /// Set up the gRPC channel
     private func setupChannel() async throws {
-        if channel != nil { return }
+        debugLog("GRPCStreamingTranscriber.setupChannel: BEGIN - channel=\(channel != nil ? "exists" : "nil")")
 
-        debugLog("GRPCStreamingTranscriber: Setting up gRPC channel")
+        if channel != nil {
+            debugLog("GRPCStreamingTranscriber.setupChannel: REUSING existing channel")
+            return
+        }
+
+        debugLog("GRPCStreamingTranscriber.setupChannel: Creating NEW channel")
 
         group = PlatformSupport.makeEventLoopGroup(loopCount: 1)
 
@@ -231,7 +272,7 @@ final class GRPCStreamingTranscriber: @unchecked Sendable {
 
         client = Google_Cloud_Speech_V2_SpeechAsyncClient(channel: channel)
 
-        debugLog("GRPCStreamingTranscriber: Channel established")
+        debugLog("GRPCStreamingTranscriber.setupChannel: NEW channel created")
     }
 
     // MARK: - Service Account Authentication

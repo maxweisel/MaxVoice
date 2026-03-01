@@ -19,6 +19,7 @@ final class AppState: HotkeyMonitorDelegate, SpeechTranscriberDelegate {
 
     // State
     private var isRecording = false
+    private var sessionNumber = 0
 
     init() {
         logger.info("AppState initializing")
@@ -65,7 +66,7 @@ final class AppState: HotkeyMonitorDelegate, SpeechTranscriberDelegate {
     // MARK: - HotkeyMonitorDelegate
 
     func onHotkeyToggle() {
-        debugLog("onHotkeyToggle called, isRecording=\(isRecording)")
+        debugLog("=== HOTKEY TOGGLE === session=\(sessionNumber), isRecording=\(isRecording)")
         if isRecording {
             stopRecording()
         } else {
@@ -76,7 +77,8 @@ final class AppState: HotkeyMonitorDelegate, SpeechTranscriberDelegate {
     // MARK: - Recording Control
 
     private func startRecording() {
-        debugLog("startRecording called")
+        sessionNumber += 1
+        debugLog("=== START RECORDING === session=\(sessionNumber)")
 
         guard let audioRecorder = audioRecorder else {
             debugLog("ERROR: AudioRecorder not initialized")
@@ -138,7 +140,7 @@ final class AppState: HotkeyMonitorDelegate, SpeechTranscriberDelegate {
     }
 
     private func stopRecording() {
-        debugLog("stopRecording called")
+        debugLog("=== STOP RECORDING === session=\(sessionNumber), isRecording=\(isRecording)")
 
         guard isRecording else {
             debugLog("Not recording, ignoring stop")

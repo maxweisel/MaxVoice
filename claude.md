@@ -49,17 +49,22 @@ mkdir -p MaxVoice.app/Contents/MacOS
 cp .build/release/MaxVoice MaxVoice.app/Contents/MacOS/
 cp MaxVoice/Info.plist MaxVoice.app/Contents/
 
-# Sign the app (required for Accessibility permissions)
-codesign -s - -f --deep MaxVoice.app
+# Sign the app (required for Accessibility and Microphone permissions)
+codesign -s - -f --deep --options runtime --entitlements MaxVoice/MaxVoice.entitlements MaxVoice.app
 
 # Run the app
 open MaxVoice.app
 ```
 
-**Important:** After rebuilding, you may need to re-add the app to Accessibility permissions:
-1. System Settings → Privacy & Security → Accessibility
-2. Remove old MaxVoice entry
-3. Add the new MaxVoice.app
+**Important:** After rebuilding, you may need to reset permissions:
+```bash
+# If app is greyed out or can't be selected in System Settings:
+rm -rf MaxVoice.app
+tccutil reset Accessibility com.maxweisel.maxvoice
+tccutil reset Microphone com.maxweisel.maxvoice
+# Then rebuild and re-sign
+```
+Then re-add the app in System Settings → Privacy & Security → Accessibility
 
 ## Architecture
 
@@ -99,3 +104,32 @@ View logs with:
 log show --predicate 'subsystem == "com.maxweisel.maxvoice"' --last 5m
 log stream --predicate 'subsystem == "com.maxweisel.maxvoice"'  # Real-time
 ```
+
+## DEBUGGING RULES - READ BEFORE FIXING BUGS
+
+**DO NOT GUESS.** Before attempting to fix any bug:
+
+1. **Add diagnostic logging first** - Add logs that will tell you exactly what's happening:
+   - State of key variables before/after operations
+   - Return values, error codes
+   - Timestamps for sequencing
+
+2. **Read the actual logs** - Run the app, reproduce the bug, check logs with:
+   ```bash
+   log show --predicate 'subsystem == "com.maxweisel.maxvoice"' --last 2m --style compact
+   ```
+
+3. **Identify the root cause from logs** - You must be able to point to a specific log line showing where things go wrong
+
+4. **Only then fix the actual problem** - Make minimal targeted changes
+
+**Common debug log patterns:**
+- `functionName: BEGIN - state1=\(val), state2=\(val)`
+- `functionName: About to call X`
+- `functionName: X returned - result=\(result)`
+- `functionName: END - finalState=\(val)`
+
+**Never:**
+- Rewrite working code based on assumptions
+- Make multiple changes at once without testing
+- Skip reading logs when debugging

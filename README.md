@@ -189,7 +189,3 @@ MaxVoice/
 └── Accessibility/
     └── AccessibilityChecker.swift  # Permission handling
 ```
-
-## License
-
-MIT
